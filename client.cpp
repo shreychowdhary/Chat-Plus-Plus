@@ -5,7 +5,8 @@
 #include<sys/types.h>
 #include<sys/socket.h>
 #include<netinet/in.h>
-#include <netdb.h>
+#include<netdb.h>
+#include<string>
 
 #define PORT "2018"
 
@@ -52,14 +53,22 @@ int main(int argc, char *argv[]) {
 	}
 	
 	freeaddrinfo(servinfo);
+	
+	while (true) {
+		if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+			std::cerr << "recv: " << strerror(errno) << std::endl;
+			return 1;
+		}
 
-	if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-		std::cerr << "recv: " << strerror(errno) << std::endl;
-		return 1;
+		if (numbytes == 0) {
+			break;
+		}
+
+		buf[numbytes] = '\0';
+	
+		std::cout << buf << std::endl; 
 	}
 
-	buf[numbytes] = '\0';
-	std::cout << buf << std::endl;
 	close(sockfd);
 	return 0;
 }

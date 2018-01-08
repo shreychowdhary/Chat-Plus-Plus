@@ -6,6 +6,7 @@
 #include<sys/socket.h>
 #include<netinet/in.h>
 #include<netdb.h>
+#include<string>
 
 #define PORT "2018"
 
@@ -58,21 +59,26 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	while (true) {
-		sin_size = sizeof their_addr;
-		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-		
-		if (new_fd == -1) {
-			std::cerr << "accept failed " << std::endl;
-		}	
 
-		std::cout << "connected" << std::endl;
-		close(sockfd);
-		send(new_fd, "Hey", 3, 0);
-		close(new_fd);
-		return 0;
+	sin_size = sizeof their_addr;
+	new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+		
+	if (new_fd == -1) {
+		std::cerr << "accept failed " << std::endl;
+	}	
+
+	std::cout << "connected" << std::endl;
+	close(sockfd);
+	
+	std::string user_input;
+	while (true) {
+		std::getline(std::cin, user_input);
+		if (user_input == "close") {
+			break;
+		}
+
+		send(new_fd, user_input.c_str(), user_input.length(), 0);
 	}
+	close(new_fd);
 	return 0;
 }
-
-
