@@ -1,15 +1,18 @@
-#include<iostream>
-#include<errno.h>
-#include<unistd.h>
-#include<cstring>
-#include<sys/types.h>
-#include<sys/socket.h>
-#include<netinet/in.h>
-#include<netdb.h>
-#include<string>
+#include "server.h"
+#include <iostream>
+#include <errno.h>
+#include <unistd.h>
+#include <cstring>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <future>
+#include <vector>
 
 #define PORT "2018"
-
+#define MAXDATASIZE 100
 int main(int argc, char *argv[]) {
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_storage their_addr;
@@ -17,6 +20,10 @@ int main(int argc, char *argv[]) {
 	int getaddrinfo_result;
 	int yes = 1;
 	socklen_t sin_size;
+	char buf[MAXDATASIZE];
+	
+	fd_set readfds;
+
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
@@ -58,27 +65,66 @@ int main(int argc, char *argv[]) {
 		std::cerr << "listen failed " << strerror(errno) << std::endl;
 		return 1;
 	}
-
-
-	sin_size = sizeof their_addr;
-	new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-		
-	if (new_fd == -1) {
-		std::cerr << "accept failed " << std::endl;
-	}	
-
-	std::cout << "connected" << std::endl;
-	close(sockfd);
 	
-	std::string user_input;
+	int max_sd = sockfd;
+	std::vector<int> clients;
+
 	while (true) {
-		std::getline(std::cin, user_input);
-		if (user_input == "close") {
-			break;
+		FD_ZERO(&readfds);
+		FD_SET(sockfd, &readfds);
+		max_sd = sockfd;
+		
+		for (int i = 0; i < clients.size(); i++) {
+			int sd = clients[i];
+			FD_SET(sd, &readfds);
+			
+			if (sd > max_sd) {
+				max_sd = sd;
+			}
+		}
+		int activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
+
+		if (activity < 0) {
+			std::cerr << strerror(errno) << std::endl;
 		}
 
-		send(new_fd, user_input.c_str(), user_input.length(), 0);
+		if (FD_ISSET(sockfd, &readfds)) {
+			socklen_t sin_size = sizeof their_addr;
+			int new_socket;
+			if ((new_socket = accept(sockfd, (struct sockaddr*) &their_addr, &sin_size)) < 0) {
+				std::cerr << "Accept: " << strerror(errno) << std::endl;
+				return 1;
+			}
+			send(new_socket, "hello", 5, 0);
+			clients.push_back(new_socket);
+		}
+		
+		std::vector<int> clients_tmp;
+		for (int i = 0; i < clients.size(); i++) {
+			int sd = clients[i];
+
+			if (FD_ISSET(sd, &readfds)) {
+				int numbytes = recv(sd, buf, MAXDATASIZE, 0);
+				
+				if (numbytes == -1) {
+					std::cerr << "Recv: " << strerror(errno) << std::endl;
+					close(sd);
+					continue;
+				} else if (numbytes == 0) {
+					std::cout << "disconnected" << std::endl;
+					close(sd);
+					continue;
+				}
+				buf[numbytes] = '\0';
+				std::cout << buf << std::endl;
+			}
+			clients_tmp.push_back(sd);
+		}
+
+		clients = clients_tmp;
 	}
+
 	close(new_fd);
 	return 0;
 }
+
