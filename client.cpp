@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
 	}
 	
 	freeaddrinfo(servinfo);
-	std::cout << "connected" << std::endl; 	
 	std::future<std::pair<int,std::string>> rec_result = std::async(std::launch::async, receive_message, sockfd);
 	std::future<void> input_result = std::async(std::launch::async, user_input, sockfd);
 

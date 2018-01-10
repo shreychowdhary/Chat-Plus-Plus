@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	int max_sd = sockfd;
-	std::vector<int> clients;
+	std::vector<std::pair<int,std::string>> clients;
 
 	while (true) {
 		FD_ZERO(&readfds);
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 		max_sd = sockfd;
 		
 		for (int i = 0; i < clients.size(); i++) {
-			int sd = clients[i];
+			int sd = clients[i].first;
 			FD_SET(sd, &readfds);
 			
 			if (sd > max_sd) {
@@ -95,17 +95,19 @@ int main(int argc, char *argv[]) {
 				std::cerr << "Accept: " << strerror(errno) << std::endl;
 				return 1;
 			}
-			send(new_socket, "hello", 5, 0);
-			clients.push_back(new_socket);
+			send(new_socket, "Enter Name", 10, 0);
+			clients.push_back(std::make_pair(new_socket,""));
 		}
 		
-		std::vector<int> clients_tmp;
+		std::vector<std::pair<int,std::string>> clients_tmp;
+		std::vector<std::pair<int,std::string>> messages;
+		
 		for (int i = 0; i < clients.size(); i++) {
-			int sd = clients[i];
-
+			int sd = clients[i].first;
+			std::string name = clients[i].second;
 			if (FD_ISSET(sd, &readfds)) {
 				int numbytes = recv(sd, buf, MAXDATASIZE, 0);
-				
+				std::string message;
 				if (numbytes == -1) {
 					std::cerr << "Recv: " << strerror(errno) << std::endl;
 					close(sd);
@@ -116,12 +118,29 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 				buf[numbytes] = '\0';
-				std::cout << buf << std::endl;
+				if (name == "") {
+					name = buf;
+					message = name + " joined.";
+				} else {
+					message = name + ":" + buf;
+				}
+				std::cout << message << std::endl;
+				messages.push_back(std::make_pair(sd, message));
 			}
-			clients_tmp.push_back(sd);
+			clients_tmp.push_back(std::make_pair(sd, name));
 		}
 
 		clients = clients_tmp;
+		for (int i = 0; i < messages.size(); i++) {
+			int sendfd = messages[i].first;
+			std::string message = messages[i].second;
+			for (int j = 0; j < clients.size(); j++) {
+				if (sendfd == clients[j].first) {
+					continue;
+				}
+				send(clients[j].first, message.c_str(), message.length(), 0);
+			}
+		}
 	}
 
 	close(new_fd);
