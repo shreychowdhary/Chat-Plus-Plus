@@ -113,7 +113,9 @@ int main(int argc, char *argv[]) {
 					close(sd);
 					continue;
 				} else if (numbytes == 0) {
-					std::cout << "disconnected" << std::endl;
+					message = name + " disconnected";
+					messages.push_back(std::make_pair(sd, message));
+					std::cout << message << std::endl;
 					close(sd);
 					continue;
 				}
