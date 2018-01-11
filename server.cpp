@@ -16,7 +16,7 @@
 int main(int argc, char *argv[]) {
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_storage their_addr;
-	int sockfd, new_fd;
+	int sockfd;
 	int getaddrinfo_result;
 	int yes = 1;
 	socklen_t sin_size;
@@ -145,7 +145,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	close(new_fd);
 	return 0;
 }
 
